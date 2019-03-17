@@ -125,9 +125,8 @@ prepareData <- function(samples_, cases, initpi, BAYES, bias_correcter_ = NULL, 
   list(pi = pi, gene_ids = gene_ids, X = designX, Y=Y, obs_table = obs_table, theta = theta)
 }
 
-#########
-#########
-#########
+
+#' @importFrom rstan cpp_object_initializer
 driver <- function(gene_rf, cases, initpi, priors, bias_coef = bias_coef, BAYES = TRUE, MCMC = FALSE, MAX_ITER = 50, target_genes = NULL, niso_filter = 0, FPKM_filter = 1.0, NORMALIZE = F, verbose=FALSE) {
   result = NULL
   opt_par = NULL
@@ -280,8 +279,8 @@ main <-function(gene_rf, cases, BAYES, priors, MAX_ITER, genelist = NULL, start 
     total_bias_mat = preprocess(gene_rf)
     bias_coef = getBiasCoef(total_bias_mat)
   }
-
   pi = GetPiMatrix(gene_rf, RANDOM_PI_START)
+  gene_rf[[1]][[1]]
   collector = list()
   for (i in 1:nblock) {
     # update progress bar
@@ -303,3 +302,30 @@ main <-function(gene_rf, cases, BAYES, priors, MAX_ITER, genelist = NULL, start 
   collector
 }
 
+
+#' Run differential splicing anaysis.
+#'
+#' @param dataDir A string for the path of the input data dir.
+#' @param cases A vector of strings indicating which samples are treatment samples.
+#' @param MAX_ITER A number for the max iteration num for the EM algorithm
+#' @param BIAS A boolean for doing bias correction or not
+#' @param FPKM_filter A number for fpkm filtering
+#' @param MCMC A boolean for using MCMC instead of EM algorithm for optimization. Note that this will be very slow.
+#' @param verbose A boolean for more verbose messages
+#' @return A list of genes. Each gene has multiple data.frame
+#' @examples
+#' run_analysis("my_path_to_data", c("caseSample1, caseSample2, caseSample3"), MAX_ITER = 5, BIAS = F, FPKM_filter = 1.0, MCMC = FALSE, verbose = FALSE)
+#' @export
+run_analysis <- function(dataDir, cases, MAX_ITER = 8, BIAS = T, FPKM_filter = 2.0, MCMC = FALSE, verbose = FALSE) {
+  gene_rf = loadData(dir = dataDir)
+
+  print("Estimating empirical bayes priors")
+  collector1 = main(gene_rf, cases, BAYES = FALSE, MAX_ITER = 3, BIAS = BIAS, FPKM_filter = FPKM_filter, RANDOM_PI_START = T)
+
+  priors = getPrior(collector1, nsamples = nrow(collector1[[1]]$pi), trim=0.25)
+
+  print("Calculating differential alternative spliced transcripts")
+  collector2 =  main(gene_rf, cases, BAYES = TRUE, priors = priors, MAX_ITER = MAX_ITER, BIAS = BIAS, MCMC = MCMC, FPKM_filter = FPKM_filter,
+                     RANDOM_PI_START = T,  verbose=verbose)
+  list(result=collector2)
+}

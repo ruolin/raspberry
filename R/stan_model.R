@@ -1,4 +1,3 @@
-library(rstan)
 stan_model_str <- "
   data {
     int<lower = 2> J; // num samples
@@ -63,5 +62,4 @@ stan_model_str <- "
 
 options(mc.cores = parallel::detectCores())
 rstan::rstan_options(auto_write = TRUE)
-stanm = rstan::stan_model(model_code = stan_model_str, model_name= model_name)
-
+stanm = rstan::stan_model(model_code = stan_model_str, model_name= "raspberry")
