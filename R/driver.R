@@ -1,4 +1,4 @@
-preprocess <-function(samples_, MAX_ROW = 10000) {
+preprocess <-function(samples_, MAX_ROW = 5000) {
   total_bias_mat = NULL
   for (i in 1:length(samples_)) {
     for (j in 1:length(samples_[[i]])) {
@@ -15,7 +15,7 @@ preprocess <-function(samples_, MAX_ROW = 10000) {
   total_bias_mat
 }
 
-prepareData <- function(samples_, cases, initpi, BAYES, bias_correcter_ = NULL, target_genes = NULL, niso_filter = 0, FPKM_filter = 1.0, NORMALIZE = F, verbose = F) {
+prepareData <- function(samples_, cases, initpi, BAYES, bias_correcter_ = NULL, target_genes = NULL, niso_min = 2, FPKM_filter = 1.0, NORMALIZE = F, verbose = F) {
   # if num_genes = k, break for only run analyses on first k genes
   # k = 0 means run for all genes
   Y = NULL
@@ -25,25 +25,19 @@ prepareData <- function(samples_, cases, initpi, BAYES, bias_correcter_ = NULL, 
   theta = NULL
   gene_ids = NULL
   tx_idx = "transcripts"
-  frac_filter = 0.1
   for (gid in target_genes) {
     dat = NULL
     skip_gene = FALSE
     for (k in 1:length(samples_)) {
       if (is.null(samples_[[k]][[gid]])) {
         skip_gene = TRUE
-        #message(paste("gene", gid, "does not express in all samples."))
+        if (verbose) {
+          message(paste("gene", gid, "does not express in all samples."))
+        }
         break
       }
       fpkms = as.numeric(unlist(strsplit(samples_[[1]][[gid]][1, "FPKMs"], ",")))
       frac = fpkms / sum(fpkms)
-      if (any(frac < frac_filter)) {
-        skip_gene = TRUE
-        if (verbose) {
-          message(paste("gene", gid, "has non expressed isoforms."))
-        }
-        break
-      }
       if (is.null(dat)){
         dat = samples_[[k]][[gid]]
 
@@ -59,32 +53,47 @@ prepareData <- function(samples_, cases, initpi, BAYES, bias_correcter_ = NULL, 
         }
         next
       }
-      if (niso_filter != 0 && mat$niso != niso_filter) {
+      if (mat$niso < niso_min) {
         if (verbose) {
-          message(paste("skip gene", gid, "for number of iso filters at", niso_filter))
+          message(paste("skip gene", gid, "for number of iso less than", niso_min))
         }
         next
       }
 
-      control_ok = FALSE
-      case_ok = FALSE
-      for(k in 1:nrow(mat$fpkm_mat)) {
-        if (rownames(mat$fpkm_mat)[k] %in% cases) {
-          if (all(mat$fpkm_mat[k, ] > FPKM_filter)) {
-            case_ok = TRUE
-          }
-        } else {
-          if (all(mat$fpkm_mat[k,] > FPKM_filter)) {
-            control_ok = TRUE
-          }
+      #control_ok = FALSE
+      #case_ok = FALSE
+      #mat$fpkm_mat, rows are samples and columns are isoforms
+      # for(k in 1:col(mat$fpkm_mat)) {
+      #   if (rownames(mat$fpkm_mat)[k] %in% cases) {
+      #     if (all(mat$fpkm_mat[k, ] > FPKM_filter)) {
+      #       case_ok = TRUE
+      #     }
+      #   } else {
+      #     if (all(mat$fpkm_mat[k,] > FPKM_filter)) {
+      #       control_ok = TRUE
+      #     }
+      #   }
+      # }
+      # if (!control_ok || !case_ok) {
+      #   if (verbose) {
+      #     message(paste("skip gene", gid, "by FPKM filter at", FPKM_filter))
+      #   }
+      #   next
+      # }
+
+      is_ok = FALSE
+      for(k in 1:col(mat$fpkm_mat)) {
+        if (all(mat$fpkm_mat[, k] > FPKM_filter)) {
+          is_ok = TRUE
         }
       }
-      if (!control_ok || !case_ok) {
+      if (!is_ok) {
         if (verbose) {
           message(paste("skip gene", gid, "by FPKM filter at", FPKM_filter))
         }
         next
       }
+
       initpi$g2t_map[[gid]] %in% colnames(initpi$pi)
       gene_pi = initpi$pi[,initpi$g2t_map[[gid]]]
       mlr.data = GenewiseHiddenTable(mat, pi = gene_pi, biasfit=bias_correcter_, normalize = NORMALIZE)
@@ -127,7 +136,7 @@ prepareData <- function(samples_, cases, initpi, BAYES, bias_correcter_ = NULL, 
 
 
 #' @importFrom rstan cpp_object_initializer
-driver <- function(gene_rf, cases, initpi, priors, bias_coef = bias_coef, BAYES = TRUE, MCMC = FALSE, MAX_ITER = 50, target_genes = NULL, niso_filter = 0, FPKM_filter = 1.0, NORMALIZE = F, verbose=FALSE) {
+driver <- function(gene_rf, cases, initpi, priors, bias_coef = bias_coef, BAYES = TRUE, MCMC = FALSE, MAX_ITER = 50, target_genes = NULL, FPKM_filter = 1.0, NORMALIZE = F, verbose=FALSE) {
   result = NULL
   opt_par = NULL
   new_pi = NULL
@@ -136,7 +145,7 @@ driver <- function(gene_rf, cases, initpi, priors, bias_coef = bias_coef, BAYES 
   if (is.null(bias_coef)) {
     FIX_THETA = FALSE
   }
-  result = prepareData(gene_rf, cases, initpi, BAYES, bias_coef, NORMALIZE = NORMALIZE, target_genes=target_genes, FPKM_filter = FPKM_filter, niso_filter=niso_filter, verbose = verbose)
+  result = prepareData(gene_rf, cases, initpi, BAYES, bias_coef, NORMALIZE = NORMALIZE, target_genes=target_genes, FPKM_filter = FPKM_filter, verbose = verbose)
   if (is.null(result)) {
     return (NULL)
   }
@@ -252,19 +261,7 @@ driver <- function(gene_rf, cases, initpi, priors, bias_coef = bias_coef, BAYES 
 ####
 ####
 
-loadData <- function(dir) {
-  files = list.files(path = dir, pattern="*context_*")
-  file_paths = paste0(dir, "/", files)
-  nfiles = length(files)
-  gene_rf = vector("list", length = nfiles)
-  for (i in 1:nfiles) {
-    print(paste("loading file", file_paths[i]))
-    rf =  read.table(file_paths[i], header=T, stringsAsFactors = F, sep = "\t")
-    split_rf = split(rf, rf$gene_id)
-    gene_rf[[i]] = split_rf
-  }
-  gene_rf
-}
+
 
 main <-function(gene_rf, cases, BAYES, priors, MAX_ITER, genelist = NULL, start = 1, FPKM_filter = 1.0, STEP = 1, RANDOM_PI_START = F, BIAS=F, NORMALIZE = F, MCMC=FALSE, verbose=F){
   if (is.null(genelist)) {
@@ -302,30 +299,66 @@ main <-function(gene_rf, cases, BAYES, priors, MAX_ITER, genelist = NULL, start 
   collector
 }
 
+#' Load data from strawberry input.
+#'
+#' @param dir A directory where the strawberry exonpath context output are stored.
+#' @return A list of of samples in Raspberry data format.
+#' @examples loadData("inst/extdata/AT_RD100_exonpath_context/")
+#' @export
+loadData <- function(dir) {
+  files = list.files(path = dir)
+  file_paths = paste0(dir, "/", files)
+  nfiles = length(files)
+  gene_rf = vector("list", length = nfiles)
+  for (i in 1:nfiles) {
+    print(paste("loading file", file_paths[i]))
+    rf =  read.table(file_paths[i], header=T, stringsAsFactors = F, sep = "\t")
+    split_rf = split(rf, rf$gene_id)
+    gene_rf[[i]] = split_rf
+  }
+  gene_rf
+}
+
+#' Run differential splicing anaysis.
+#'
+#' @param raspberry_df A list of samples in Raspberry input data format
+#' @param cases A vector of strings indicating which samples are treatment samples.
+#' @param MAX_ITER A number for the max iteration num for the EM algorithm. Default is 8.
+#' @param BIAS A boolean for doing bias correction or not, default is False
+#' @param FPKM_filter A number for fpkm filtering. Default is 1.0.
+#' @param MCMC A boolean for using MCMC instead of EM algorithm for optimization. Note that this will be very slow. Default is False.
+#' @param verbose A boolean for more verbose messages. Default is False.
+#' @return A list of genes. Each gene has multiple data.frame
+#' @examples
+#' diffiso(raspdata, c("caseSample1, caseSample2, caseSample3"), MAX_ITER = 5, BIAS = F, FPKM_filter = 1.0, MCMC = FALSE, verbose = FALSE)
+#' @export
+diffiso <- function(raspberry_df, cases, MAX_ITER = 8, BIAS = F, FPKM_filter = 0.1, MCMC = FALSE, verbose = FALSE) {
+  print("Estimating empirical bayes priors")
+  collector1 = main(raspberry_df, cases, BAYES = FALSE, MAX_ITER = 3, BIAS = BIAS, FPKM_filter = FPKM_filter, RANDOM_PI_START = T, verbose = verbose)
+
+  priors = getPrior(collector1, nsamples = nrow(collector1[[1]]$pi), trim=0.25)
+
+  print("Calculating differential alternative spliced transcripts")
+  collector2 =  main(raspberry_df, cases, BAYES = TRUE, priors = priors, MAX_ITER = MAX_ITER, BIAS = BIAS, MCMC = MCMC, FPKM_filter = FPKM_filter,
+                     RANDOM_PI_START = T)
+  collector2
+}
+
 
 #' Run differential splicing anaysis.
 #'
 #' @param dataDir A string for the path of the input data dir.
 #' @param cases A vector of strings indicating which samples are treatment samples.
-#' @param MAX_ITER A number for the max iteration num for the EM algorithm
-#' @param BIAS A boolean for doing bias correction or not
-#' @param FPKM_filter A number for fpkm filtering
-#' @param MCMC A boolean for using MCMC instead of EM algorithm for optimization. Note that this will be very slow.
-#' @param verbose A boolean for more verbose messages
+#' @param MAX_ITER A number for the max iteration num for the EM algorithm. Default is 8.
+#' @param BIAS A boolean for doing bias correction or not, default is False
+#' @param FPKM_filter A number for fpkm filtering. Default is 1.0.
+#' @param MCMC A boolean for using MCMC instead of EM algorithm for optimization. Note that this will be very slow. Default is False.
+#' @param verbose A boolean for more verbose messages. Default is False.
 #' @return A list of genes. Each gene has multiple data.frame
 #' @examples
 #' run_analysis("my_path_to_data", c("caseSample1, caseSample2, caseSample3"), MAX_ITER = 5, BIAS = F, FPKM_filter = 1.0, MCMC = FALSE, verbose = FALSE)
 #' @export
-run_analysis <- function(dataDir, cases, MAX_ITER = 8, BIAS = T, FPKM_filter = 2.0, MCMC = FALSE, verbose = FALSE) {
+run_analysis <- function(dataDir, cases, MAX_ITER = 8, BIAS = F, FPKM_filter = 0.1, MCMC = FALSE, verbose = FALSE) {
   gene_rf = loadData(dir = dataDir)
-
-  print("Estimating empirical bayes priors")
-  collector1 = main(gene_rf, cases, BAYES = FALSE, MAX_ITER = 3, BIAS = BIAS, FPKM_filter = FPKM_filter, RANDOM_PI_START = T)
-
-  priors = getPrior(collector1, nsamples = nrow(collector1[[1]]$pi), trim=0.25)
-
-  print("Calculating differential alternative spliced transcripts")
-  collector2 =  main(gene_rf, cases, BAYES = TRUE, priors = priors, MAX_ITER = MAX_ITER, BIAS = BIAS, MCMC = MCMC, FPKM_filter = FPKM_filter,
-                     RANDOM_PI_START = T,  verbose=verbose)
-  list(result=collector2)
+  list(result=diffiso(gene_rf, cases, MAX_ITER, BIAS, FPKM_filter, MCMC, verbose))
 }

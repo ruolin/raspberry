@@ -6,24 +6,7 @@ print_pred_cov<- function(gene_rf, bias_coef, gname = "NUP107") {
   write.table(file =gname, biasResult, quote = FALSE, sep="\t")
 }
 
-getPvalues <-function(collector, verbose = F, bayes = T) {
-  pvalues = c()
-  for (i in 1:length(collector)) {
-    if (bayes) {
-      condp = collector[[i]]$pvalues[grepl(",2]", names(collector[[i]]$pvalues))]
-      names(condp) = collector[[i]]$gene_ids
-    } else {
-      condp = collector[[i]]$pvalues[,"Xcondition"]
-      names(condp) = rep(collector[[i]]$gene_ids[[1]], length(condp))
-    }
-    pvalues = c(pvalues, condp)
-    if (verbose) {
-      print("called")
-      print(unique(dsgs)[!is.na(unique(dsgs))])
-    }
-  }
-  list(pvalues=pvalues)
-}
+
 
 F1summary<-function(result, truth, critical = 0.01, verbose=F, bayes = T) {
   called = 0

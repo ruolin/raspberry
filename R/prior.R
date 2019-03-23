@@ -19,9 +19,19 @@ getPrior <- function(collector, nsamples, trim = 0.1) {
   b = c()
   estimates = vector("list", length = nsamples)
   for(j in 1:nsamples) {
-     tmp = betas[, j][betas[,j] > quantile(betas[,j], trim) & betas[,j] < quantile(betas[,j], 1-trim) ]
-     #hist(a, breaks=30)
-     res= MASS::fitdistr(tmp, mytdist, list(m=0, s = 0.02, df = 20))
+     res = NULL
+     for (trimit in seq(trim, 0, -0.01)) {
+        to_break = tryCatch({
+          tmp = betas[, j][betas[,j] > quantile(betas[,j], trim) & betas[,j] < quantile(betas[,j], 1-trim) ]
+          res= MASS::fitdistr(tmp, mytdist, list(m=0, s = 0.02, df = 20))
+          TRUE
+        }, error = function(e) {
+          FALSE
+        })
+        if(to_break) {
+          break;
+        }
+     }
      a_j = res$estimate[3]/2
      b_j = (res$estimate[2] * res$estimate[2] * res$estimate[3]) / 2
      a_j

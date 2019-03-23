@@ -33,7 +33,7 @@ getXy <- function(data, cases, include_geneid = FALSE){
   cond_prop_mat = matrix(nrow=nrows, ncol=niso, 0)
   #class_prop_mat = matrix(nrow=nrows, ncol=niso, 0)
   for (i in 1:nrows) {
-    #if ( length(unlist(strsplit(data[i,cond_prop_idx], ","))) != niso) { 
+    #if ( length(unlist(strsplit(data[i,cond_prop_idx], ","))) != niso) {
       # Right now cannot handle isoforms that do not overlap
       # For example gene ARHGEF7
       #return (list(data=data, niso = 1, nbins = 1))
@@ -47,37 +47,38 @@ getXy <- function(data, cases, include_geneid = FALSE){
   #Filter row contains all 0 thetas
   row_to_remove = c()
   for (i in 1:nrows) {
+    stopifnot(sum(is.na(cond_prop_mat[i,])) == 0)
     if (sum(cond_prop_mat[i,]) < 1e-10) {
       row_to_remove = c(row_to_remove, i)
     }
   }
-  
+
   if (length(row_to_remove) != 0) {
     cond_prop_mat = cond_prop_mat[-row_to_remove]
     #class_prop_mat = class_prop_mat[-row_to_remove]
     data = data[-row_to_remove,]
     nrows = nrow(data)
   }
-  
+
   nbins = length(unique(data[,path_idx]))
   #if (niso == 1  || nbins == 1) {
   if (nbins == 1) {
     return (list(data=data, niso = niso, nbins = nbins))
   }
-  
+
   #print(head(data))
   # sample matrix
-  sm = model.matrix( ~sample-1, data=data) 
+  sm = model.matrix( ~sample-1, data=data)
   nsample = ncol(sm)
   sm = sm[,-ncol(sm)]
   X = sm
-  
+
   # iso matrix
-  iso_matrix = matrix(0, nrow = nrows, ncol=niso) 
+  iso_matrix = matrix(0, nrow = nrows, ncol=niso)
   colnames(iso_matrix) = iso_names
-  X = cbind(X, iso_matrix) 
-  X = cbind(X, model.matrix(~data[, path_idx] -1)[,-1]) 
-  
+  X = cbind(X, iso_matrix)
+  X = cbind(X, model.matrix(~data[, path_idx] -1)[,-1])
+
   # update for condition
   for (k in 1:nrows) {
     if (data[k,1] %in% cases) {
@@ -95,13 +96,13 @@ getXy <- function(data, cases, include_geneid = FALSE){
   large_X = X
   large_sm = sm
   #stopifnot(niso > 1)
-  
+
   for (i in 2:niso) {
     large_X = rbind(large_X,X)
     large_sm = rbind(large_sm, sm)
   }
-  
-  
+
+
   for (i in 1:nrows) {
     for (j in 1:niso) {
       idx = i + (j -1)*nrow(data)
@@ -109,17 +110,17 @@ getXy <- function(data, cases, include_geneid = FALSE){
     }
   }
   large_X = large_X[,-(iso_start_idx+1)] # identifiability constraints
-  
+
   ### the interaction effects
   for (i in 1:(niso-1)) {
     #colnames(large_X)[iso_start_idx+i]
     tmp_X=large_X[,iso_start_idx+i] * large_sm
     colnames(tmp_X)[1] = "condition"
     colnames(tmp_X) = paste0(colnames(large_X)[iso_start_idx+i], "*", colnames(tmp_X))
-    large_X = cbind(tmp_X, large_X)    
+    large_X = cbind(tmp_X, large_X)
     iso_start_idx = iso_start_idx + ncol(tmp_X)
   }
-  
+
   ## SX is for multinomial regression
   row.names(large_X) = rep(1:nrow(large_X))
   list(X=large_X, data=data, SX=sm, niso = niso, nbins = nbins, nsample=nsample, fpkm_mat = fpkm_mat)
@@ -143,7 +144,7 @@ GetPiMatrix <-function(df_, RANDOM_PI_START) {
     } else {
       niso = 1
     }
-    
+
     if (RANDOM_PI_START) {
       gene_pi = array(1/niso, dim = c(1, niso))
     } else {

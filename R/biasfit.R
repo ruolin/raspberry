@@ -4,7 +4,7 @@ getBiasMat <- function(gene_df){
   iso_idx = "transcripts"
   exonbin_idx = "path_symbol"
   bincount_idx = which(colnames(gene_df) == "path_count")
-  
+
   iso_names  = unlist(strsplit(gene_df[,iso_idx], ","))
   niso = length(iso_names)
   nrows = nrow(gene_df)
@@ -25,7 +25,7 @@ getBiasCoef<- function(total_bias_mat_){
 
    gc_stretch_idx = 6:9
    gene_mat = model.matrix(~total_bias_mat_[,1]-1)
-   #colnames(total_bias_mat_)[1:9] = c("gene","gene_count","bin_count", "gc_content", "entropy", "high_gc_20_0.8","high_gc_20_0.9","high_gc_40_0.8","high_gc_40_0.9") 
+   #colnames(total_bias_mat_)[1:9] = c("gene","gene_count","bin_count", "gc_content", "entropy", "high_gc_20_0.8","high_gc_20_0.9","high_gc_40_0.8","high_gc_40_0.9")
    gc_cubic = ns (total_bias_mat_[, "path_gc_content"], knots = gc_knots, Boundary.knots = gc_boundary_knots)
    entropy_cubic = ns(total_bias_mat_[, "path_hexmer_entropy"], knots = entropy_knots, Boundary.knots = entropy_boundary_knots)
    colnames(gc_cubic) = paste0("gc_cubic_basis", 1:ncol(gc_cubic))
@@ -44,7 +44,7 @@ getFittedBias <- function(data, biasfit){
   path_idx = "path_symbol"
   gc_idx = "path_gc_content"
   entropy_idx = "path_hexmer_entropy"
-  gc_stretch_idx = c("gc_strecth_0.8_20", "gc_strecth_0.9_20", "gc_strecth_0.8_40", "gc_strecth_0.9_40")
+  gc_stretch_idx = c("gc_stretch_0.8_20", "gc_stretch_0.9_20", "gc_stretch_0.8_40", "gc_stretch_0.9_40")
   gc_knots = c(0.4,0.5,0.6)
   gc_boundary_knots = c(0.3, 0.7)
   entropy_knots = c(4,5,6)
@@ -60,7 +60,7 @@ getFittedBias <- function(data, biasfit){
   bias_covar = bias_covar[,-ncol(bias_covar)]
   na_idx = which(is.na(biasfit$coef))
   if (length(na_idx) == 0) {
-    logy = as.matrix(bias_covar)%*% biasfit$coef  
+    logy = as.matrix(bias_covar)%*% biasfit$coef
   } else {
     logy = as.matrix(bias_covar[,-na_idx])%*% biasfit$coef[-na_idx]
   }
