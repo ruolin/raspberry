@@ -1,4 +1,6 @@
-#' exonpath counts and various information for 4961 multi-isoforms genes from 6 arabidopsis thaliana samples.
+#' Arabidopsis RD100 data
+#'
+#' Exonpath counts and various information for 4961 multi-isoforms genes from 6 arabidopsis thaliana samples.
 #' These 6 samples are from two groups.
 #' A dataset contains a list of 6 lists, corresponding to one sample.
 #' Each sample contains a list of genes and each gene is a data frame.

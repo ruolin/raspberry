@@ -1,6 +1,18 @@
 # raspberry
 RNA-Seq differential spliced transcripts toolkit
 
+#prerequisites
+devtools.
+```
+install.packages("devtools")
+```
+
+#Installation
+```
+library(devtools)
+install_github("ruolin/raspberry")
+```
+
 #Examples
 ```
 library(raspberry)
