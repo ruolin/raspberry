@@ -25,4 +25,6 @@
 #'   \item{gc_stretch_0.9_40}{A indicator indicating whether the exonpath contains a stretch of DNA at least 40bp and have gc ratio > 0.9}
 #' }
 #' @source \url{http://https://github.com/ruolin/raspberry}
-NULL
+#' @examples
+#' data("ad_rd100")
+"ad_rd100"
