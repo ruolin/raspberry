@@ -11,14 +11,13 @@ License: GPL3
 Encoding: UTF-8
 LazyData: true
 Depends:
-    R (>= 3.3.1)
+    R (>= 3.3.1),
+    rstan (>= 2.15.1)
 biocViews:
 Imports:
     MASS (>= 7.3.45),
-    rstan (>= 2.15.1),
     nnet (>= 7.3.12),
-    qvalue
-Suggests:
+    qvalue,
     pROC (>= 1.9.1),
     RColorBrewer (>= 1.1.2)
 RoxygenNote: 6.1.1.9000
