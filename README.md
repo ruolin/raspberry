@@ -1,5 +1,16 @@
-# raspberry
+# Raspberry
 RNA-Seq differential spliced transcripts toolkit
+
+Raspberry utilizes a multinomial logistic regression to regress transcript relative abundances on a set of covariates to explain replicate and condition effects.
+To better overcome the coverage bias, Raspberry uses a dual-phase algorithm.
+During the bias correction phase, another multinomial logistic regression model is trained on single-isoform loci across all samples to discover relationships between the subexon path probability and the underlying local sequence information such as GC-content, existence of high GC-stretches and hexamer context. 
+Then during the second phase, the differential splicing analysis algorithm uses the fitted path probabilities instead of the observed path probabilities. To account for the count overdispersion, Raspberry employs an empirical Bayesian model which places shrinkage priors on the multinomial logistic regression coefficients, which represent isoform-level dispersion and etc..
+These priors are estimated by borrowing information across all loci and all samples.
+
+To our knowledge, Raspberry is the first to simultaneously estimate transcript abundances and identify differential alternative splicing at the transcript level.
+Existing methods either measure at the level of splicing events (for example inclusion or exclusion of a particular cassette exon), e.g., DEXSeq,  or detect at the level of genes, e.g., Cuffdiff 2.
+In addition, Raspberry combines a bias correction step into the detection of differential alternative splicing.
+Although many transcript quantification methods employ bias correction steps, the effect of coverage bias correction has not been observed and fully studied in the context of differential alternative splicing detection until Raspberry.
 
 ## prerequisites
 devtools.
