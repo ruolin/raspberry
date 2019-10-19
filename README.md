@@ -12,11 +12,41 @@ Existing methods either measure at the level of splicing events (for example inc
 In addition, Raspberry combines a bias correction step into the detection of differential alternative splicing.
 Although many transcript quantification methods employ bias correction steps, the effect of coverage bias correction has not been observed and fully studied in the context of differential alternative splicing detection until Raspberry.
 
-## prerequisites
-devtools.
+### Detection of differential alternative splicing from two groups of RNA-SEQ samples.
+
+prerequisites
+================================
+
+1. Strawberry. This can be found at https://github.com/ruolin/strawberry
+
+
+2. devtools.
 ```
 install.packages("devtools")
 ```
+
+3. Two groups of BAM files.
+
+4. A genome file.
+
+Preparing the input for rasphberry
+======================================
+Strawberry is used to preprocess the bam files and calculate the exon_bin counts. 
+run strawberry on each individual bams with a given gff file and genome file and `-f` option. 
+  
+    strawberry ERR188021.sorted.bam -g /path/to/your/annotation.gff -b /path/to/your/genome.fa -o ERR188021.gtf -f frag_context_ERR188021.txt
+  
+For non-model organism, can run Strawberry to reconstruct gene models and then merged them by Cuffmerge. 
+  
+    1. strawberry ERR188021.sorted.bam -o ERR188021.gtf
+  
+    2. strawberry ERR188088.sorted.bam -o ERR188088.gtf
+  
+    3. echo ERR188021.gtf > samples.lst
+  
+    4. echo ERR188088.gtf >> samples.lst
+  
+    5. Cuffmerge samples.lst
 
 ## Installation
 ```
