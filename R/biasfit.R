@@ -23,7 +23,7 @@ getBiasCoef<- function(total_bias_mat_){
    entropy_knots = c(4,5,6)
    entropy_boundary_knots = c(3,7)
 
-   gc_stretch_idx = 6:9
+   gc_stretch_idx = c("gc_stretch_0.8_20", "gc_stretch_0.9_20", "gc_stretch_0.8_40", "gc_stretch_0.9_40")
    gene_mat = model.matrix(~total_bias_mat_[,1]-1)
    #colnames(total_bias_mat_)[1:9] = c("gene","gene_count","bin_count", "gc_content", "entropy", "high_gc_20_0.8","high_gc_20_0.9","high_gc_40_0.8","high_gc_40_0.9")
    gc_cubic = ns (total_bias_mat_[, "path_gc_content"], knots = gc_knots, Boundary.knots = gc_boundary_knots)

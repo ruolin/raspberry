@@ -174,7 +174,7 @@ driver <- function(gene_rf, cases, initpi, priors, bias_coef = bias_coef, BAYES 
         mcmc_pi_mat = as.matrix(summary(stan_result, pars= c("pi"), probs=c(0.5))$summary)
         new_pi = matrix(mcmc_pi_mat[,1], byrow=TRUE, nrow=nrow(result$Y), ncol=ncol(result$Y), dimnames = list(rownames(result$Y), colnames(result$Y)))
       } else {
-        invisible(capture.output(opt_par <- rstan::optimizing(stanm, data = dat, hessian = TRUE, algorithm="LBFGS", seed=42)))
+        invisible(capture.output(opt_par <- rstan::optimizing(stanm, data = dat, hessian = TRUE, algorithm="LBFGS", seed=17)))
         new_pi = matrix(opt_par$par[grepl("pi", names(opt_par$par))], nrow=nrow(result$Y), ncol=ncol(result$Y), dimnames = list(rownames(result$Y), colnames(result$Y)))
       }
 
