@@ -63,7 +63,7 @@ prepareData <- function(samples_, cases, initpi, BAYES, bias_correcter_ = NULL, 
       #control_ok = FALSE
       #case_ok = FALSE
       #mat$fpkm_mat, rows are samples and columns are isoforms
-      # for(k in 1:col(mat$fpkm_mat)) {
+      # for(k in 1:ncol(mat$fpkm_mat)) {
       #   if (rownames(mat$fpkm_mat)[k] %in% cases) {
       #     if (all(mat$fpkm_mat[k, ] > FPKM_filter)) {
       #       case_ok = TRUE
@@ -82,7 +82,7 @@ prepareData <- function(samples_, cases, initpi, BAYES, bias_correcter_ = NULL, 
       # }
 
       is_ok = FALSE
-      for(k in 1:col(mat$fpkm_mat)) {
+      for(k in 1:ncol(mat$fpkm_mat)) {
         if (all(mat$fpkm_mat[, k] > FPKM_filter)) {
           is_ok = TRUE
         }
@@ -341,9 +341,18 @@ diffiso <- function(raspberry_df, cases, MAX_ITER = 8, BIAS = F, FPKM_filter = 0
   print("Calculating differential alternative spliced transcripts")
   collector2 =  main(raspberry_df, cases, BAYES = TRUE, priors = priors, MAX_ITER = MAX_ITER, BIAS = BIAS, MCMC = MCMC, FPKM_filter = FPKM_filter,
                      RANDOM_PI_START = T)
-  collector2
+  res <- new("RTable")
+  for (i in 1:length(collector2)) {
+    res@abundance <- rbind(res@abundance, t(collector2[[i]]$pi))
+    df_sig <- data.frame(tx_id = colnames(collector2[[i]]$pi),
+                         gene_id = collector2[[i]]$gene_ids,
+                         p_value = collector2[[i]]$pvalues,
+                         coef = collector2[[i]]$betas)
+    res@significance <- rbind(res@significance, df_sig)
+  }
+  rownames(res@significance) <- 1:nrow(res@significance)
+  res
 }
-
 
 #' Run differential splicing anaysis.
 #'
@@ -360,5 +369,5 @@ diffiso <- function(raspberry_df, cases, MAX_ITER = 8, BIAS = F, FPKM_filter = 0
 #' @export
 run_analysis <- function(dataDir, cases, MAX_ITER = 8, BIAS = F, FPKM_filter = 0.1, MCMC = FALSE, verbose = FALSE) {
   gene_rf = loadData(dir = dataDir)
-  list(result=diffiso(gene_rf, cases, MAX_ITER, BIAS, FPKM_filter, MCMC, verbose))
+  diffiso(gene_rf, cases, MAX_ITER, BIAS, FPKM_filter, MCMC, verbose)
 }

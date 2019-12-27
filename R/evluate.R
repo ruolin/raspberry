@@ -36,7 +36,7 @@ rproc <- function(collector, truth, bayes=T){
 #' @param ... Other programs output as a key value pari, separated by comma. The keys are program names, which have to be from the following (CUffdiff2, DEXSeq, DSGseq. currently supported). The values are file path to the program  output.
 #' @return A path the ROC curve pdf.
 #' @examples
-#'evaluate_gene_levels(raspberry$result, truth_file = "inst/extdata/trueASgenes.txt",
+#'evaluate_gene_levels(Raspberry_output, truth_file = "inst/extdata/trueASgenes.txt",
 #'                     Cuffdiff2 = "inst/extdata/splicing.diff",
 #'                     DEXSeq = "inst/extdata/dexseq.txt",
 #'                     DSGseq = "inst/extdata/DSGresult.txt")
@@ -45,7 +45,9 @@ evaluate_gene_levels <- function(raspberry_result, truth_file, ...) {
 
   pdf("partial_roc.pdf", width=8, height=8)
   truth = scan(truth_file, "")
-  raspberry <- rproc(raspberry_result, truth, bayes=T)
+  #raspberry <- rproc(raspberry_result, truth, bayes=T)
+  raspberry <- prepare_roc(raspberry_result, truth)
+
   rroc <- pROC::plot.roc(raspberry$label, raspberry$score, main="", col= "lightslateblue", legacy.axes=TRUE,
                        xlab="False positive rate (FPR)", ylab="True positive rate (TPR)",identity=F,cex.axis=2.2, cex.lab=2.2, lwd=4,
                        xlim = c(1, 0.8), asp = 0.2)
@@ -70,13 +72,18 @@ evaluate_gene_levels <- function(raspberry_result, truth_file, ...) {
 
   legend("bottomright", legend = legend_txt,
          col = legend_cols, lwd = 5)
+  #dev.copy(pdf, 'partial_roc.pdf')
   dev.off()
   file.path(getwd(), "partial_roc.pdf")
 }
 
-prepare_roc <-function(file, truth, program = "Cuffdiff2") {
+prepare_roc <-function(file, truth, program = "Raspberry") {
   df = read.table(file, header = T)
-  if(program == "Cuffdiff2") {
+  if (program == "Raspberry") {
+    genes_min_p = tapply(df$p_value, df$gene_id, min)
+    list(score = genes_min_p, label = as.integer(names(genes_min_p) %in% truth))
+  }
+  else if(program == "Cuffdiff2") {
     df_ok = df[df$status == "OK",]
     df_ok[,"label"] = 0
     df_ok[df_ok$gene %in% truth, "label"] = 1
@@ -92,6 +99,13 @@ prepare_roc <-function(file, truth, program = "Cuffdiff2") {
     df_ok[, "label"] = 0
     df_ok[df_ok$gene_name %in% truth, "label"] = 1
     list(score = df_ok$NB_stat, label = df_ok$label)
+  }
+  else if(program == "DRIMseq") {
+    #df[, "label"] = 0
+    #df[df$gene_id %in% truth, "label"] = 1
+    #list(score = df$adj_pvalue, label = df$label)
+    genes_min_p = tapply(df$pvalue, df$gene_id, min)
+    list(score = genes_min_p, label = as.integer(names(genes_min_p) %in% truth))
   }
   else {
     message("Unknown tool")
